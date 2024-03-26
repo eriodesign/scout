@@ -1,19 +1,12 @@
 <?php
 
-namespace Laravel\Scout;
+namespace Eriodesign\Scout;
 
-use Laravel\Scout\Jobs\MakeSearchable;
-use Laravel\Scout\Jobs\RemoveFromSearch;
+use Eriodesign\Scout\Jobs\MakeSearchable;
+use Eriodesign\Scout\Jobs\RemoveFromSearch;
 
 class Scout
 {
-    /**
-     * The Scout library version.
-     *
-     * @var string
-     */
-    const VERSION = '10.8.3';
-
     /**
      * The job class that should make models searchable.
      *

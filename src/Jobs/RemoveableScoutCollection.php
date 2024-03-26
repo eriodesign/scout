@@ -1,9 +1,9 @@
 <?php
 
-namespace Laravel\Scout\Jobs;
+namespace Eriodesign\Scout\Jobs;
 
 use Illuminate\Database\Eloquent\Collection;
-use Laravel\Scout\Searchable;
+use Eriodesign\Scout\Searchable;
 
 class RemoveableScoutCollection extends Collection
 {

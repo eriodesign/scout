@@ -1,21 +1,21 @@
 <?php
 
-namespace Laravel\Scout;
+namespace Eriodesign\Scout;
 
 use Algolia\AlgoliaSearch\Config\SearchConfig;
 use Algolia\AlgoliaSearch\SearchClient as Algolia;
 use Algolia\AlgoliaSearch\Support\UserAgent;
 use Exception;
-use Illuminate\Support\Manager;
-use Laravel\Scout\Engines\AlgoliaEngine;
-use Laravel\Scout\Engines\CollectionEngine;
-use Laravel\Scout\Engines\DatabaseEngine;
-use Laravel\Scout\Engines\MeilisearchEngine;
-use Laravel\Scout\Engines\NullEngine;
-use Laravel\Scout\Engines\TypesenseEngine;
-use Meilisearch\Client as MeilisearchClient;
-use Meilisearch\Meilisearch;
-use Typesense\Client as Typesense;
+use Eriodesign\Scout\Engines\AlgoliaEngine;
+use Eriodesign\Scout\Engines\CollectionEngine;
+use Eriodesign\Scout\Engines\DatabaseEngine;
+use Eriodesign\Scout\Engines\ElasticSearchEngine;
+use Eriodesign\Scout\Engines\MeiliSearchEngine;
+use Eriodesign\Scout\Engines\NullEngine;
+use MeiliSearch\Client as MeiliSearch;
+use Elastic\Elasticsearch\Client as ElasticSearch;
+use Elastic\Elasticsearch\ClientBuilder;
+use Eriodesign\Scout\Engines\XunSearchEngine;
 
 class EngineManager extends Manager
 {
@@ -23,7 +23,7 @@ class EngineManager extends Manager
      * Get a driver instance.
      *
      * @param  string|null  $name
-     * @return \Laravel\Scout\Engines\Engine
+     * @return \Eriodesign\Scout\Engines\Engine
      */
     public function engine($name = null)
     {
@@ -33,38 +33,34 @@ class EngineManager extends Manager
     /**
      * Create an Algolia engine instance.
      *
-     * @return \Laravel\Scout\Engines\AlgoliaEngine
+     * @return \Eriodesign\Scout\Engines\AlgoliaEngine
      */
     public function createAlgoliaDriver()
     {
         $this->ensureAlgoliaClientIsInstalled();
 
-        UserAgent::addCustomUserAgent('Laravel Scout', Scout::VERSION);
+        UserAgent::addCustomUserAgent('Laravel Scout', '9.4.9');
 
         $config = SearchConfig::create(
-            config('scout.algolia.id'),
-            config('scout.algolia.secret')
+            config('plugin.eriodesign.scout.app.algolia.id'),
+            config('plugin.eriodesign.scout.app.algolia.secret')
         )->setDefaultHeaders(
             $this->defaultAlgoliaHeaders()
         );
 
-        if (is_int($connectTimeout = config('scout.algolia.connect_timeout'))) {
+        if (is_int($connectTimeout = config('plugin.eriodesign.scout.app.algolia.connect_timeout'))) {
             $config->setConnectTimeout($connectTimeout);
         }
 
-        if (is_int($readTimeout = config('scout.algolia.read_timeout'))) {
+        if (is_int($readTimeout = config('plugin.eriodesign.scout.app.algolia.read_timeout'))) {
             $config->setReadTimeout($readTimeout);
         }
 
-        if (is_int($writeTimeout = config('scout.algolia.write_timeout'))) {
+        if (is_int($writeTimeout = config('plugin.eriodesign.scout.app.algolia.write_timeout'))) {
             $config->setWriteTimeout($writeTimeout);
         }
 
-        if (is_int($batchSize = config('scout.algolia.batch_size'))) {
-            $config->setBatchSize($batchSize);
-        }
-
-        return new AlgoliaEngine(Algolia::createWithConfig($config), config('scout.soft_delete'));
+        return new AlgoliaEngine(Algolia::createWithConfig($config), config('plugin.eriodesign.scout.app.soft_delete'));
     }
 
     /**
@@ -81,10 +77,10 @@ class EngineManager extends Manager
         }
 
         if (class_exists('AlgoliaSearch\Client')) {
-            throw new Exception('Please upgrade your Algolia client to version: ^3.2.');
+            throw new Exception('Please upgrade your Algolia client to version: ^2.2.');
         }
 
-        throw new Exception('Please install the suggested Algolia client: algolia/algoliasearch-client-php.');
+        throw new Exception('Please install the Algolia client: algolia/algoliasearch-client-php.');
     }
 
     /**
@@ -94,7 +90,7 @@ class EngineManager extends Manager
      */
     protected function defaultAlgoliaHeaders()
     {
-        if (! config('scout.identify')) {
+        if (! config('plugin.eriodesign.scout.app.identify')) {
             return [];
         }
 
@@ -114,68 +110,118 @@ class EngineManager extends Manager
     }
 
     /**
-     * Create a Meilisearch engine instance.
+     * Create an MeiliSearch engine instance.
      *
-     * @return \Laravel\Scout\Engines\MeilisearchEngine
+     * @return \Eriodesign\Scout\Engines\MeiliSearchEngine
      */
     public function createMeilisearchDriver()
     {
-        $this->ensureMeilisearchClientIsInstalled();
 
-        return new MeilisearchEngine(
-            $this->container->make(MeilisearchClient::class),
-            config('scout.soft_delete', false)
+        $this->ensureMeiliSearchClientIsInstalled();
+        $client = $this->container->make(MeiliSearch::class);
+        return new MeiliSearchEngine(
+            $client,
+            config('plugin.eriodesign.scout.app.soft_delete', false)
         );
     }
 
     /**
-     * Ensure the Meilisearch client is installed.
+     * Ensure the MeiliSearch client is installed.
      *
      * @return void
      *
      * @throws \Exception
      */
-    protected function ensureMeilisearchClientIsInstalled()
+    protected function ensureMeiliSearchClientIsInstalled()
     {
-        if (class_exists(Meilisearch::class) && version_compare(Meilisearch::VERSION, '1.0.0') >= 0) {
+        if (class_exists(MeiliSearch::class)) {
             return;
         }
 
-        throw new Exception('Please install the suggested Meilisearch client: meilisearch/meilisearch-php.');
+        throw new Exception('Please install the MeiliSearch client: meilisearch/meilisearch-php.');
     }
 
     /**
-     * Create a Typesense engine instance.
+     * Create an ElasticSearch engine instance.
      *
-     * @return \Laravel\Scout\Engines\TypesenseEngine
-     *
-     * @throws \Typesense\Exceptions\ConfigError
+     * @return \Eriodesign\Scout\Engines\ElasticSearchEngine
      */
-    public function createTypesenseDriver()
+    public function createElasticsearchDriver()
     {
-        $this->ensureTypesenseClientIsInstalled();
+        $config = config('plugin.eriodesign.scout.app.elasticsearch');
+        $this->ensureElasticSearchClientIsInstalled();
+        $clientBuilder = ClientBuilder::create()->setHosts($config['hosts']);
 
-        return new TypesenseEngine(new Typesense(config('scout.typesense.client-settings')));
+        if(!empty($config['auth'])){
+            if(!empty($config['auth']['user']) && $config['auth']['user'] !== null &&
+                !empty($config['auth']['pass']) && $config['auth']['pass'] !== null
+            ){
+                $clientBuilder->setBasicAuthentication($config['auth']['user'], $config['auth']['pass']);
+            }
+            if (!empty($config['auth']['api_key']) && $config['auth']['api_key'] !== null) {
+                $clientBuilder->setApiKey( $config['auth']['api_key'],$config['auth']['api_id'] ?? null);
+            }
+            if (!empty($config['auth']['cloud_id']) && $config['auth']['cloud_id'] !== null) {
+                $clientBuilder->setElasticCloudId( $config['auth']['cloud_id']);
+            }
+        }
+        return new ElasticSearchEngine(
+            $clientBuilder->build(),
+            config('plugin.eriodesign.scout.app.soft_delete', false)
+        );
     }
 
     /**
-     * Ensure the Typesense client is installed.
+     * Ensure the MeiliSearch client is installed.
      *
      * @return void
      *
-     * @throws Exception
+     * @throws \Exception
      */
-    protected function ensureTypesenseClientIsInstalled()
+    protected function ensureElasticSearchClientIsInstalled()
     {
-        if (! class_exists(Typesense::class)) {
-            throw new Exception('Please install the suggested Typesense client: typesense/typesense-php.');
+        if (class_exists(ElasticSearch::class)) {
+            return;
         }
+
+        throw new Exception('Please install the ElasticSearch client: elasticsearch/elasticsearch.');
     }
 
     /**
+     * Create an ElasticSearch engine instance.
+     *
+     * @return \Eriodesign\Scout\Engines\XunSearchEngine
+     * @throws \Elastic\Elasticsearch\Exception\AuthenticationException
+     */
+    public function createXunsearchDriver()
+    {
+
+        $this->ensureXunSearchClientIsInstalled();
+        return new XunSearchEngine(
+            new XunSearchClient(),
+            config('plugin.eriodesign.scout.app.soft_delete', false)
+        );
+    }
+
+    /**
+     * Ensure the MeiliSearch client is installed.
+     *
+     * @return void
+     *
+     * @throws \Exception
+     */
+    protected function ensureXunSearchClientIsInstalled()
+    {
+        if (class_exists(\XS::class)) {
+            return;
+        }
+
+        throw new Exception('Please install the ElasticSearch client: elasticsearch/elasticsearch.');
+    }
+    /**
      * Create a database engine instance.
      *
-     * @return \Laravel\Scout\Engines\DatabaseEngine
+     * @return \Eriodesign\Scout\Engines\DatabaseEngine
      */
     public function createDatabaseDriver()
     {
@@ -185,7 +231,7 @@ class EngineManager extends Manager
     /**
      * Create a collection engine instance.
      *
-     * @return \Laravel\Scout\Engines\CollectionEngine
+     * @return \Eriodesign\Scout\Engines\CollectionEngine
      */
     public function createCollectionDriver()
     {
@@ -195,7 +241,7 @@ class EngineManager extends Manager
     /**
      * Create a null engine instance.
      *
-     * @return \Laravel\Scout\Engines\NullEngine
+     * @return \Eriodesign\Scout\Engines\NullEngine
      */
     public function createNullDriver()
     {
@@ -221,7 +267,7 @@ class EngineManager extends Manager
      */
     public function getDefaultDriver()
     {
-        if (is_null($driver = config('scout.driver'))) {
+        if (is_null($driver = config('plugin.eriodesign.scout.app.driver'))) {
             return 'null';
         }
 

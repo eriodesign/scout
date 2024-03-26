@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\Scout\Attributes;
+namespace Eriodesign\Scout\Attributes;
 
 use Attribute;
 use Illuminate\Support\Arr;

@@ -1,17 +1,17 @@
 <?php
 
-namespace Laravel\Scout\Engines;
+namespace Eriodesign\Scout\Engines;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Arr;
 use Illuminate\Support\LazyCollection;
-use Laravel\Scout\Attributes\SearchUsingFullText;
-use Laravel\Scout\Attributes\SearchUsingPrefix;
-use Laravel\Scout\Builder;
-use Laravel\Scout\Contracts\PaginatesEloquentModelsUsingDatabase;
+use Eriodesign\Scout\Attributes\SearchUsingFullText;
+use Eriodesign\Scout\Attributes\SearchUsingPrefix;
+use Eriodesign\Scout\Builder;
+use Eriodesign\Scout\Contracts\PaginatesEloquentModels;
 use ReflectionMethod;
 
-class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatabase
+class DatabaseEngine extends Engine implements PaginatesEloquentModels
 {
     /**
      * Create a new engine instance.
@@ -48,7 +48,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return mixed
      */
     public function search(Builder $builder)
@@ -64,78 +64,41 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Paginate the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
      */
     public function paginate(Builder $builder, $perPage, $page)
     {
-        return $this->paginateUsingDatabase($builder, $perPage, 'page', $page);
-    }
-
-    /**
-     * Paginate the given search on the engine.
-     *
-     * @param  \Laravel\Scout\Builder  $builder
-     * @param  int  $perPage
-     * @param  string  $pageName
-     * @param  int  $page
-     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
-     */
-    public function paginateUsingDatabase(Builder $builder, $perPage, $pageName, $page)
-    {
         return $this->buildSearchQuery($builder)
-            ->when($builder->orders, function ($query) use ($builder) {
-                foreach ($builder->orders as $order) {
-                    $query->orderBy($order['column'], $order['direction']);
-                }
-            })
-            ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
-                $query->orderBy($builder->model->getKeyName(), 'desc');
-            })
-            ->paginate($perPage, ['*'], $pageName, $page);
+                ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
+                    $query->orderBy($builder->model->getKeyName(), 'desc');
+                })
+                ->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * Paginate the given search on the engine using simple pagination.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return \Illuminate\Contracts\Pagination\Paginator
      */
     public function simplePaginate(Builder $builder, $perPage, $page)
     {
-        return $this->simplePaginateUsingDatabase($builder, $perPage, 'page', $page);
-    }
-
-    /**
-     * Paginate the given query into a simple paginator.
-     *
-     * @param  int  $perPage
-     * @param  string  $pageName
-     * @param  int|null  $page
-     * @return \Illuminate\Contracts\Pagination\Paginator
-     */
-    public function simplePaginateUsingDatabase(Builder $builder, $perPage, $pageName, $page)
-    {
         return $this->buildSearchQuery($builder)
-            ->when($builder->orders, function ($query) use ($builder) {
-                foreach ($builder->orders as $order) {
-                    $query->orderBy($order['column'], $order['direction']);
-                }
-            })
-            ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
-                $query->orderBy($builder->model->getKeyName(), 'desc');
-            })
-            ->simplePaginate($perPage, ['*'], $pageName, $page);
+                ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
+                    $query->orderBy($builder->model->getKeyName(), 'desc');
+                })
+                ->simplePaginate($perPage, ['*'], 'page', $page);
     }
 
     /**
      * Get the Eloquent models for the given builder.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int|null  $page
      * @param  int|null  $perPage
      * @return \Illuminate\Database\Eloquent\Collection
@@ -146,11 +109,6 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
             ->when(! is_null($page) && ! is_null($perPage), function ($query) use ($page, $perPage) {
                 $query->forPage($page, $perPage);
             })
-            ->when($builder->orders, function ($query) use ($builder) {
-                foreach ($builder->orders as $order) {
-                    $query->orderBy($order['column'], $order['direction']);
-                }
-            })
             ->when(! $this->getFullTextColumns($builder), function ($query) use ($builder) {
                 $query->orderBy($builder->model->getKeyName(), 'desc');
             })
@@ -160,14 +118,14 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Initialize / build the search query for the given Scout builder.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return \Illuminate\Database\Eloquent\Builder
      */
     protected function buildSearchQuery(Builder $builder)
     {
         $query = $this->initializeSearchQuery(
             $builder,
-            array_keys($builder->model->toSearchableArray()),
+            $columns = array_keys($builder->model->toSearchableArray()),
             $this->getPrefixColumns($builder),
             $this->getFullTextColumns($builder)
         );
@@ -180,7 +138,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Build the initial text search database query for all relevant columns.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  array  $columns
      * @param  array  $prefixColumns
      * @param  array  $fullTextColumns
@@ -189,10 +147,10 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     protected function initializeSearchQuery(Builder $builder, array $columns, array $prefixColumns = [], array $fullTextColumns = [])
     {
         if (blank($builder->query)) {
-            return $builder->model->newQuery();
+            return $builder->model->query();
         }
 
-        return $builder->model->newQuery()->where(function ($query) use ($builder, $columns, $prefixColumns, $fullTextColumns) {
+        return $builder->model->query()->where(function ($query) use ($builder, $columns, $prefixColumns, $fullTextColumns) {
             $connectionType = $builder->model->getConnection()->getDriverName();
 
             $canSearchPrimaryKey = ctype_digit($builder->query) &&
@@ -231,7 +189,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Add additional, developer defined constraints to the search query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
@@ -249,10 +207,6 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
             foreach ($builder->whereIns as $key => $values) {
                 $query->whereIn($key, $values);
             }
-        })->when(! $builder->callback && count($builder->whereNotIns) > 0, function ($query) use ($builder) {
-            foreach ($builder->whereNotIns as $key => $values) {
-                $query->whereNotIn($key, $values);
-            }
         })->when(! is_null($builder->queryCallback), function ($query) use ($builder) {
             call_user_func($builder->queryCallback, $query);
         });
@@ -261,9 +215,9 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Ensure that soft delete constraints are properly applied to the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  \Eriodesign\Scout\Builder  $builder
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @return \Illuminate\Database\Query\Builder
      */
     protected function constrainForSoftDeletes($builder, $query)
     {
@@ -282,7 +236,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Get the full-text columns for the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return array
      */
     protected function getFullTextColumns(Builder $builder)
@@ -293,7 +247,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Get the prefix search columns for the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return array
      */
     protected function getPrefixColumns(Builder $builder)
@@ -304,7 +258,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Get the columns marked with a given attribute.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  string  $attributeClass
      * @return array
      */
@@ -330,7 +284,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Get the full-text search options for the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return array
      */
     protected function getFullTextOptions(Builder $builder)
@@ -361,14 +315,14 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
         $results = $results['results'];
 
         return count($results) > 0
-                    ? collect($results->modelKeys())
+                    ? $results->modelKeys()
                     : collect();
     }
 
     /**
      * Map the given results to instances of the given model.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Database\Eloquent\Collection
@@ -381,7 +335,7 @@ class DatabaseEngine extends Engine implements PaginatesEloquentModelsUsingDatab
     /**
      * Map the given results to instances of the given model via a lazy collection.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Support\LazyCollection

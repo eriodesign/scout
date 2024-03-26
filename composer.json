@@ -1,5 +1,5 @@
 {
-    "name": "laravel/scout",
+    "name": "eriodesign/scout",
     "description": "Laravel Scout provides a driver based solution to searching your Eloquent models.",
     "keywords": ["algolia", "laravel", "search"],
     "license": "MIT",
@@ -36,8 +36,11 @@
     },
     "autoload": {
         "psr-4": {
-            "Laravel\\Scout\\": "src/"
-        }
+            "eriodesign\\WebmanScout\\": "src/"
+        },
+        "files": [
+            "helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

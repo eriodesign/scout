@@ -1,12 +1,12 @@
 <?php
 
-namespace Laravel\Scout\Engines;
+namespace Eriodesign\Scout\Engines;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Arr;
 use Illuminate\Support\LazyCollection;
 use Illuminate\Support\Str;
-use Laravel\Scout\Builder;
+use Eriodesign\Scout\Builder;
 
 class CollectionEngine extends Engine
 {
@@ -45,7 +45,7 @@ class CollectionEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return mixed
      */
     public function search(Builder $builder)
@@ -61,7 +61,7 @@ class CollectionEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return mixed
@@ -79,7 +79,7 @@ class CollectionEngine extends Engine
     /**
      * Get the Eloquent models for the given builder.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return \Illuminate\Database\Eloquent\Collection
      */
     protected function searchModels(Builder $builder)
@@ -100,18 +100,7 @@ class CollectionEngine extends Engine
                                 $query->whereIn($key, $values);
                             }
                         })
-                        ->when(! $builder->callback && count($builder->whereNotIns) > 0, function ($query) use ($builder) {
-                            foreach ($builder->whereNotIns as $key => $values) {
-                                $query->whereNotIn($key, $values);
-                            }
-                        })
-                        ->when($builder->orders, function ($query) use ($builder) {
-                            foreach ($builder->orders as $order) {
-                                $query->orderBy($order['column'], $order['direction']);
-                            }
-                        }, function ($query) use ($builder) {
-                            $query->orderBy($builder->model->qualifyColumn($builder->model->getScoutKeyName()), 'desc');
-                        });
+                        ->orderBy($builder->model->getKeyName(), 'desc');
 
         $models = $this->ensureSoftDeletesAreHandled($builder, $query)
                         ->get()
@@ -121,7 +110,7 @@ class CollectionEngine extends Engine
             return $models;
         }
 
-        return $models->first()->makeSearchableUsing($models)->filter(function ($model) use ($builder) {
+        return $models->filter(function ($model) use ($builder) {
             if (! $model->shouldBeSearchable()) {
                 return false;
             }
@@ -149,7 +138,7 @@ class CollectionEngine extends Engine
     /**
      * Ensure that soft delete handling is properly applied to the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  \Illuminate\Database\Query\Builder  $query
      * @return \Illuminate\Database\Query\Builder
      */
@@ -178,14 +167,14 @@ class CollectionEngine extends Engine
         $results = array_values($results['results']);
 
         return count($results) > 0
-                    ? collect($results)->pluck($results[0]->getScoutKeyName())
+                    ? collect($results)->pluck($results[0]->getKeyName())
                     : collect();
     }
 
     /**
      * Map the given results to instances of the given model.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Database\Eloquent\Collection
@@ -199,7 +188,7 @@ class CollectionEngine extends Engine
         }
 
         $objectIds = collect($results)
-                ->pluck($model->getScoutKeyName())
+                ->pluck($model->getKeyName())
                 ->values()
                 ->all();
 
@@ -217,7 +206,7 @@ class CollectionEngine extends Engine
     /**
      * Map the given results to instances of the given model via a lazy collection.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Support\LazyCollection
@@ -231,18 +220,18 @@ class CollectionEngine extends Engine
         }
 
         $objectIds = collect($results)
-                ->pluck($model->getScoutKeyName())
+                ->pluck($model->getKeyName())
                 ->values()->all();
 
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
-            $builder, $objectIds
-        )->cursor()->filter(function ($model) use ($objectIds) {
-            return in_array($model->getScoutKey(), $objectIds);
-        })->sortBy(function ($model) use ($objectIdPositions) {
-            return $objectIdPositions[$model->getScoutKey()];
-        })->values();
+                $builder, $objectIds
+            )->cursor()->filter(function ($model) use ($objectIds) {
+                return in_array($model->getScoutKey(), $objectIds);
+            })->sortBy(function ($model) use ($objectIdPositions) {
+                return $objectIdPositions[$model->getScoutKey()];
+            })->values();
     }
 
     /**

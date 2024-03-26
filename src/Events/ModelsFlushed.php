@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\Scout\Events;
+namespace Eriodesign\Scout\Events;
 
 class ModelsFlushed
 {

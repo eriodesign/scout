@@ -1,10 +1,9 @@
 <?php
 
-namespace Laravel\Scout;
+namespace Eriodesign\Scout;
 
 use Closure;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Config;
 
 class ModelObserver
 {
@@ -43,8 +42,9 @@ class ModelObserver
      */
     public function __construct()
     {
-        $this->afterCommit = Config::get('scout.after_commit', false);
-        $this->usingSoftDeletes = Config::get('scout.soft_delete', false);
+        $this->afterCommit = config('plugin.eriodesign.scout.app.after_commit', false);
+        $this->usingSoftDeletes = config('plugin.eriodesign.scout.app.soft_delete', false);
+
     }
 
     /**

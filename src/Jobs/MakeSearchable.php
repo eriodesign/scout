@@ -1,44 +1,24 @@
 <?php
 
-namespace Laravel\Scout\Jobs;
+namespace app\queue\redis;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\SerializesModels;
+use Webman\RedisQueue\Consumer;
 
-class MakeSearchable implements ShouldQueue
+class MakeSearchable implements Consumer
 {
-    use Queueable, SerializesModels;
+    // 要消费的队列名
+    public $queue = 'scout_make';
 
-    /**
-     * The models to be made searchable.
-     *
-     * @var \Illuminate\Database\Eloquent\Collection
-     */
-    public $models;
+    // 连接名，对应 plugin/webman/redis-queue/redis.php 里的连接`
+    public $connection = 'default';
 
-    /**
-     * Create a new job instance.
-     *
-     * @param  \Illuminate\Database\Eloquent\Collection  $models
-     * @return void
-     */
-    public function __construct($models)
+    // 消费
+    public function consume($models)
     {
-        $this->models = $models;
-    }
-
-    /**
-     * Handle the job.
-     *
-     * @return void
-     */
-    public function handle()
-    {
-        if (count($this->models) === 0) {
+        $models = unserialize($models);
+        if (count($models) === 0) {
             return;
         }
-
-        $this->models->first()->makeSearchableUsing($this->models)->first()->searchableUsing()->update($this->models);
+        $models->first()->searchableUsing()->update($models);
     }
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace Laravel\Scout\Engines;
+namespace Eriodesign\Scout\Engines;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\LazyCollection;
-use Laravel\Scout\Builder;
+use Eriodesign\Scout\Builder;
 
 class NullEngine extends Engine
 {
@@ -34,7 +34,7 @@ class NullEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return mixed
      */
     public function search(Builder $builder)
@@ -45,7 +45,7 @@ class NullEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return mixed
@@ -69,7 +69,7 @@ class NullEngine extends Engine
     /**
      * Map the given results to instances of the given model.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Database\Eloquent\Collection
@@ -82,7 +82,7 @@ class NullEngine extends Engine
     /**
      * Map the given results to instances of the given model via a lazy collection.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Support\LazyCollection

@@ -1,15 +1,15 @@
 <?php
 
-namespace Laravel\Scout\Contracts;
+namespace Eriodesign\Scout\Contracts;
 
-use Laravel\Scout\Builder;
+use Eriodesign\Scout\Builder;
 
 interface PaginatesEloquentModels
 {
     /**
      * Paginate the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
@@ -19,7 +19,7 @@ interface PaginatesEloquentModels
     /**
      * Paginate the given search on the engine using simple pagination.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return \Illuminate\Contracts\Pagination\Paginator

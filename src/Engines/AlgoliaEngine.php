@@ -1,13 +1,12 @@
 <?php
 
-namespace Laravel\Scout\Engines;
+namespace Eriodesign\Scout\Engines;
 
 use Algolia\AlgoliaSearch\SearchClient as Algolia;
 use Exception;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\LazyCollection;
-use Laravel\Scout\Builder;
-use Laravel\Scout\Jobs\RemoveableScoutCollection;
+use Eriodesign\Scout\Builder;
 
 class AlgoliaEngine extends Engine
 {
@@ -64,9 +63,9 @@ class AlgoliaEngine extends Engine
             }
 
             return array_merge(
-                $searchableData,
-                $model->scoutMetadata(),
                 ['objectID' => $model->getScoutKey()],
+                $searchableData,
+                $model->scoutMetadata()
             );
         })->filter()->values()->all();
 
@@ -83,23 +82,19 @@ class AlgoliaEngine extends Engine
      */
     public function delete($models)
     {
-        if ($models->isEmpty()) {
-            return;
-        }
-
         $index = $this->algolia->initIndex($models->first()->searchableAs());
 
-        $keys = $models instanceof RemoveableScoutCollection
-            ? $models->pluck($models->first()->getScoutKeyName())
-            : $models->map->getScoutKey();
-
-        $index->deleteObjects($keys->all());
+        $index->deleteObjects(
+            $models->map(function ($model) {
+                return $model->getScoutKey();
+            })->values()->all()
+        );
     }
 
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return mixed
      */
     public function search(Builder $builder)
@@ -113,7 +108,7 @@ class AlgoliaEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  int  $perPage
      * @param  int  $page
      * @return mixed
@@ -130,7 +125,7 @@ class AlgoliaEngine extends Engine
     /**
      * Perform the given search on the engine.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  array  $options
      * @return mixed
      */
@@ -139,8 +134,6 @@ class AlgoliaEngine extends Engine
         $algolia = $this->algolia->initIndex(
             $builder->index ?: $builder->model->searchableAs()
         );
-
-        $options = array_merge($builder->options, $options);
 
         if ($builder->callback) {
             return call_user_func(
@@ -157,7 +150,7 @@ class AlgoliaEngine extends Engine
     /**
      * Get the filter array for the query.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @return array
      */
     protected function filters(Builder $builder)
@@ -167,10 +160,6 @@ class AlgoliaEngine extends Engine
         })->values();
 
         return $wheres->merge(collect($builder->whereIns)->map(function ($values, $key) {
-            if (empty($values)) {
-                return '0=1';
-            }
-
             return collect($values)->map(function ($value) use ($key) {
                 return $key.'='.$value;
             })->all();
@@ -191,7 +180,7 @@ class AlgoliaEngine extends Engine
     /**
      * Map the given results to instances of the given model.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Database\Eloquent\Collection
@@ -210,16 +199,6 @@ class AlgoliaEngine extends Engine
             $builder, $objectIds
         )->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
-        })->map(function ($model) use ($results, $objectIdPositions) {
-            $result = $results['hits'][$objectIdPositions[$model->getScoutKey()]] ?? [];
-
-            foreach ($result as $key => $value) {
-                if (substr($key, 0, 1) === '_') {
-                    $model->withScoutMetadata($key, $value);
-                }
-            }
-
-            return $model;
         })->sortBy(function ($model) use ($objectIdPositions) {
             return $objectIdPositions[$model->getScoutKey()];
         })->values();
@@ -228,7 +207,7 @@ class AlgoliaEngine extends Engine
     /**
      * Map the given results to instances of the given model via a lazy collection.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Support\LazyCollection
@@ -243,22 +222,12 @@ class AlgoliaEngine extends Engine
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
-            $builder, $objectIds
-        )->cursor()->filter(function ($model) use ($objectIds) {
-            return in_array($model->getScoutKey(), $objectIds);
-        })->map(function ($model) use ($results, $objectIdPositions) {
-            $result = $results['hits'][$objectIdPositions[$model->getScoutKey()]] ?? [];
-
-            foreach ($result as $key => $value) {
-                if (substr($key, 0, 1) === '_') {
-                    $model->withScoutMetadata($key, $value);
-                }
-            }
-
-            return $model;
-        })->sortBy(function ($model) use ($objectIdPositions) {
-            return $objectIdPositions[$model->getScoutKey()];
-        })->values();
+                $builder, $objectIds
+            )->cursor()->filter(function ($model) use ($objectIds) {
+                return in_array($model->getScoutKey(), $objectIds);
+            })->sortBy(function ($model) use ($objectIdPositions) {
+                return $objectIdPositions[$model->getScoutKey()];
+            })->values();
     }
 
     /**

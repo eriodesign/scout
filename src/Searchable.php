@@ -1,11 +1,11 @@
 <?php
 
-namespace Laravel\Scout;
+namespace Eriodesign\Scout;
 
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection as BaseCollection;
-
+use Webman\RedisQueue\Client as QueueClient;
+use Webman\RedisQueue\Redis as QueueRedis;
 trait Searchable
 {
     /**
@@ -23,9 +23,7 @@ trait Searchable
     public static function bootSearchable()
     {
         static::addGlobalScope(new SearchableScope);
-
         static::observe(new ModelObserver);
-
         (new static)->registerSearchableMacros();
     }
 
@@ -37,7 +35,6 @@ trait Searchable
     public function registerSearchableMacros()
     {
         $self = $this;
-
         BaseCollection::macro('searchable', function () use ($self) {
             $self->queueMakeSearchable($this);
         });
@@ -59,13 +56,13 @@ trait Searchable
             return;
         }
 
-        if (! config('scout.queue')) {
-            return $models->first()->makeSearchableUsing($models)->first()->searchableUsing()->update($models);
+        if (! config('plugin.eriodesign.scout.app.queue')) {
+            return $models->first()->searchableUsing()->update($models);
         }
 
-        dispatch((new Scout::$makeSearchableJob($models))
-                ->onQueue($models->first()->syncWithSearchUsingQueue())
-                ->onConnection($models->first()->syncWithSearchUsing()));
+        if (class_exists(QueueRedis::class)) {
+            QueueRedis::send('scout_make', serialize($models));
+        }
     }
 
     /**
@@ -80,13 +77,12 @@ trait Searchable
             return;
         }
 
-        if (! config('scout.queue')) {
+        if (! config('plugin.eriodesign.scout.app.queue')) {
             return $models->first()->searchableUsing()->delete($models);
         }
-
-        dispatch(new Scout::$removeFromSearchJob($models))
-            ->onQueue($models->first()->syncWithSearchUsingQueue())
-            ->onConnection($models->first()->syncWithSearchUsing());
+        if (class_exists(QueueRedis::class)) {
+            QueueRedis::send('scout_remove', serialize($models));
+        }
     }
 
     /**
@@ -114,7 +110,7 @@ trait Searchable
      *
      * @param  string  $query
      * @param  \Closure  $callback
-     * @return \Laravel\Scout\Builder
+     * @return \Eriodesign\Scout\Builder
      */
     public static function search($query = '', $callback = null)
     {
@@ -122,7 +118,7 @@ trait Searchable
             'model' => new static,
             'query' => $query,
             'callback' => $callback,
-            'softDelete' => static::usesSoftDelete() && config('scout.soft_delete', false),
+            'softDelete'=> static::usesSoftDelete() && config('plugin.eriodesign.scout.app.soft_delete', false),
         ]);
     }
 
@@ -135,9 +131,7 @@ trait Searchable
     public static function makeAllSearchable($chunk = null)
     {
         $self = new static;
-
-        $softDelete = static::usesSoftDelete() && config('scout.soft_delete', false);
-
+        $softDelete = static::usesSoftDelete() && config('plugin.eriodesign.scout.app.soft_delete', false);
         $self->newQuery()
             ->when(true, function ($query) use ($self) {
                 $self->makeAllSearchableUsing($query);
@@ -145,21 +139,9 @@ trait Searchable
             ->when($softDelete, function ($query) {
                 $query->withTrashed();
             })
-            ->orderBy(
-                $self->qualifyColumn($self->getScoutKeyName())
-            )
+            ->orderBy($self->getKeyName())
             ->searchable($chunk);
-    }
 
-    /**
-     * Modify the collection of models being made searchable.
-     *
-     * @param  \Illuminate\Support\Collection  $models
-     * @return \Illuminate\Support\Collection
-     */
-    public function makeSearchableUsing(BaseCollection $models)
-    {
-        return $models;
     }
 
     /**
@@ -168,7 +150,7 @@ trait Searchable
      * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    protected function makeAllSearchableUsing(EloquentBuilder $query)
+    protected function makeAllSearchableUsing($query)
     {
         return $query;
     }
@@ -228,7 +210,7 @@ trait Searchable
     /**
      * Get the requested models from an array of object IDs.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  array  $ids
      * @return mixed
      */
@@ -240,7 +222,7 @@ trait Searchable
     /**
      * Get a query builder for retrieving the requested models from an array of object IDs.
      *
-     * @param  \Laravel\Scout\Builder  $builder
+     * @param  \Eriodesign\Scout\Builder  $builder
      * @param  array  $ids
      * @return mixed
      */
@@ -253,12 +235,12 @@ trait Searchable
             call_user_func($builder->queryCallback, $query);
         }
 
-        $whereIn = in_array($this->getScoutKeyType(), ['int', 'integer']) ?
+        $whereIn = in_array($this->getKeyType(), ['int', 'integer']) ?
             'whereIntegerInRaw' :
             'whereIn';
 
         return $query->{$whereIn}(
-            $this->qualifyColumn($this->getScoutKeyName()), $ids
+            $this->getScoutKeyName(), $ids
         );
     }
 
@@ -306,7 +288,7 @@ trait Searchable
      */
     public function searchableAs()
     {
-        return config('scout.prefix').$this->getTable();
+        return config('plugin.eriodesign.scout.app.prefix').$this->getTable();
     }
 
     /**
@@ -336,7 +318,7 @@ trait Searchable
      */
     public function syncWithSearchUsing()
     {
-        return config('scout.queue.connection') ?: config('queue.default');
+        return 'default';
     }
 
     /**
@@ -346,7 +328,7 @@ trait Searchable
      */
     public function syncWithSearchUsingQueue()
     {
-        return config('scout.queue.queue');
+        return config('plugin.eriodesign.scout.app.queue');
     }
 
     /**
@@ -394,23 +376,13 @@ trait Searchable
     }
 
     /**
-     * Get the auto-incrementing key type for querying models.
-     *
-     * @return string
-     */
-    public function getScoutKeyType()
-    {
-        return $this->getKeyType();
-    }
-
-    /**
      * Get the key name used to index the model.
      *
      * @return mixed
      */
     public function getScoutKeyName()
     {
-        return $this->getKeyName();
+        return $this->getQualifiedKeyName();
     }
 
     /**
