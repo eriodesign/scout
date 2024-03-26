@@ -11,7 +11,7 @@ class Install
      */
     protected static $pathRelation = array (
         'config/plugin/eriodesign/scout' => 'config/plugin/eriodesign/scout',
-        'Jobs' => 'app/queue/redis'
+        'Jobs' => 'process/queue/redis'
     );
 
     /**
