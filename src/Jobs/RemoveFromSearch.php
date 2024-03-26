@@ -1,6 +1,6 @@
 <?php
 
-namespace app\queue\redis;
+namespace process\queue\redis;
 
 
 use Illuminate\Contracts\Queue\ShouldQueue;
