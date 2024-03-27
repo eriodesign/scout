@@ -77,6 +77,13 @@ class Builder
     public $orders = [];
 
     /**
+     * Extra options that should be applied to the search.
+     *
+     * @var array
+     */
+    public $options = [];
+
+    /**
      * Create a new search builder instance.
      *
      * @param  \Illuminate\Database\Eloquent\Model  $model
@@ -187,6 +194,49 @@ class Builder
             'column' => $column,
             'direction' => strtolower($direction) == 'asc' ? 'asc' : 'desc',
         ];
+
+        return $this;
+    }
+
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     *
+     * @param  string  $column
+     * @return $this
+     */
+    public function latest($column = null)
+    {
+        if (is_null($column)) {
+            $column = $this->model->getCreatedAtColumn() ?? 'created_at';
+        }
+
+        return $this->orderBy($column, 'desc');
+    }
+
+    /**
+     * Add an "order by" clause for a timestamp to the query.
+     *
+     * @param  string  $column
+     * @return $this
+     */
+    public function oldest($column = null)
+    {
+        if (is_null($column)) {
+            $column = $this->model->getCreatedAtColumn() ?? 'created_at';
+        }
+
+        return $this->orderBy($column, 'asc');
+    }
+
+    /**
+     * Set extra options for the search query.
+     *
+     * @param  array  $options
+     * @return $this
+     */
+    public function options(array $options)
+    {
+        $this->options = $options;
 
         return $this;
     }

@@ -15,7 +15,6 @@ use Eriodesign\Scout\Engines\NullEngine;
 use MeiliSearch\Client as MeiliSearch;
 use Elastic\Elasticsearch\Client as ElasticSearch;
 use Elastic\Elasticsearch\ClientBuilder;
-use Eriodesign\Scout\Engines\XunSearchEngine;
 
 class EngineManager extends Manager
 {
@@ -187,37 +186,6 @@ class EngineManager extends Manager
         throw new Exception('Please install the ElasticSearch client: elasticsearch/elasticsearch.');
     }
 
-    /**
-     * Create an ElasticSearch engine instance.
-     *
-     * @return \Eriodesign\Scout\Engines\XunSearchEngine
-     * @throws \Elastic\Elasticsearch\Exception\AuthenticationException
-     */
-    public function createXunsearchDriver()
-    {
-
-        $this->ensureXunSearchClientIsInstalled();
-        return new XunSearchEngine(
-            new XunSearchClient(),
-            config('plugin.eriodesign.scout.app.soft_delete', false)
-        );
-    }
-
-    /**
-     * Ensure the MeiliSearch client is installed.
-     *
-     * @return void
-     *
-     * @throws \Exception
-     */
-    protected function ensureXunSearchClientIsInstalled()
-    {
-        if (class_exists(\XS::class)) {
-            return;
-        }
-
-        throw new Exception('Please install the ElasticSearch client: elasticsearch/elasticsearch.');
-    }
     /**
      * Create a database engine instance.
      *

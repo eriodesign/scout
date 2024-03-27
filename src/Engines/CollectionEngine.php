@@ -149,7 +149,7 @@ class CollectionEngine extends Engine
         } elseif (Arr::get($builder->wheres, '__soft_deleted') === 1) {
             return $query->onlyTrashed();
         } elseif (in_array(SoftDeletes::class, class_uses_recursive(get_class($builder->model))) &&
-                  config('scout.soft_delete', false)) {
+                  config('plugin.eriodesign.scout.app.soft_delete', false)) {
             return $query->withTrashed();
         }
 

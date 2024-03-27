@@ -24,7 +24,7 @@ class SyncIndexSettingsCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Sync your configured index settings with your search engine (Meilisearch)';
+    protected $description = '将配置的索引设置与搜索引擎（Meilisearch）同步';
 
     /**
      * Execute the console command.
@@ -36,14 +36,14 @@ class SyncIndexSettingsCommand extends Command
     {
         $engine = $manager->engine();
 
-        $driver = config('scout.driver');
+        $driver = config('plugin.eriodesign.scout.app.driver');
 
         if (! method_exists($engine, 'updateIndexSettings')) {
-            return $this->error('The "'.$driver.'" engine does not support updating index settings.');
+            return $this->error('"'.$driver.'" 引擎不支持更新索引设置');
         }
 
         try {
-            $indexes = (array) config('scout.'.$driver.'.index-settings', []);
+            $indexes = (array) config('plugin.eriodesign.scout.app.'.$driver.'.index-settings', []);
 
             if (count($indexes)) {
                 foreach ($indexes as $name => $settings) {
@@ -58,17 +58,17 @@ class SyncIndexSettingsCommand extends Command
                     }
 
                     if (isset($model) &&
-                        config('scout.soft_delete', false) &&
+                        config('plugin.eriodesign.scout.app.soft_delete', false) &&
                         in_array(SoftDeletes::class, class_uses_recursive($model))) {
                         $settings['filterableAttributes'][] = '__soft_deleted';
                     }
 
                     $engine->updateIndexSettings($indexName = $this->indexName($name), $settings);
 
-                    $this->info('Settings for the ['.$indexName.'] index synced successfully.');
+                    $this->info('['.$indexName.'] 索引设置已同步成功');
                 }
             } else {
-                $this->info('No index settings found for the "'.$driver.'" engine.');
+                $this->info('未找到 "'.$driver.'" 搜索引擎');
             }
         } catch (Exception $exception) {
             $this->error($exception->getMessage());
@@ -87,7 +87,7 @@ class SyncIndexSettingsCommand extends Command
             return (new $name)->searchableAs();
         }
 
-        $prefix = config('scout.prefix');
+        $prefix = config('plugin.eriodesign.scout.app.prefix');
 
         return ! Str::startsWith($name, $prefix) ? $prefix.$name : $name;
     }

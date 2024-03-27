@@ -18,15 +18,15 @@ class IndexCommand extends Command
      * @var string
      */
     protected $signature = 'scout:index
-            {name : The name of the index}
-            {--k|key= : The name of the primary key}';
+            {name : 索引名称}
+            {--k|key= : 主键的名称}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Create an index';
+    protected $description = '创建一个索引';
 
     /**
      * Execute the console command.
@@ -54,16 +54,16 @@ class IndexCommand extends Command
             $engine->createIndex($name, $options);
 
             if (method_exists($engine, 'updateIndexSettings')) {
-                $driver = config('scout.driver');
+                $driver = config('plugin.eriodesign.scout.app.driver');
 
                 $class = isset($model) ? get_class($model) : null;
 
-                $settings = config('scout.'.$driver.'.index-settings.'.$name)
-                                ?? config('scout.'.$driver.'.index-settings.'.$class)
+                $settings = config('plugin.eriodesign.scout.app.'.$driver.'.index-settings.'.$name)
+                                ?? config('plugin.eriodesign.scout.app.'.$driver.'.index-settings.'.$class)
                                 ?? [];
 
                 if (isset($model) &&
-                    config('scout.soft_delete', false) &&
+                    config('plugin.eriodesign.scout.app.soft_delete', false) &&
                     in_array(SoftDeletes::class, class_uses_recursive($model))) {
                     $settings['filterableAttributes'][] = '__soft_deleted';
                 }
@@ -73,7 +73,7 @@ class IndexCommand extends Command
                 }
             }
 
-            $this->info('Index ["'.$name.'"] created successfully.');
+            $this->info('索引 ["'.$name.'"] 创建成功');
         } catch (Exception $exception) {
             $this->error($exception->getMessage());
         }
@@ -91,7 +91,7 @@ class IndexCommand extends Command
             return (new $name)->searchableAs();
         }
 
-        $prefix = config('scout.prefix');
+        $prefix = config('plugin.eriodesign.scout.app.prefix');
 
         return ! Str::startsWith($name, $prefix) ? $prefix.$name : $name;
     }

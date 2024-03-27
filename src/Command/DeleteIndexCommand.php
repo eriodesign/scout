@@ -36,7 +36,7 @@ class DeleteIndexCommand extends Command
         try {
             $name = $input->getArgument('name');
             app(EngineManager::class)->engine()->deleteIndex($name);
-            $output->writeln('Index "'.$name.'" deleted.');
+            $output->writeln('索引 "'.$name.'" 已删除.');
         } catch (\Exception $exception) {
             $output->writeln($exception->getMessage());
         }

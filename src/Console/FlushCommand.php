@@ -13,14 +13,14 @@ class FlushCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'scout:flush {model : Class name of the model to flush}';
+    protected $signature = 'scout:flush {model : 要清除的模型的类名}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = "Flush all of the model's records from the index";
+    protected $description = "从索引中清除模型的所有记录";
 
     /**
      * Execute the console command.
@@ -35,6 +35,6 @@ class FlushCommand extends Command
 
         $model::removeAllFromSearch();
 
-        $this->info('All ['.$class.'] records have been flushed.');
+        $this->info('所有 ['.$class.'] 记录已被刷新');
     }
 }

@@ -22,7 +22,7 @@ class DeleteAllIndexesCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Delete all indexes';
+    protected $description = '删除所有索引';
 
     /**
      * Execute the console command.
@@ -34,7 +34,7 @@ class DeleteAllIndexesCommand extends Command
     {
         $engine = $manager->engine();
 
-        $driver = config('scout.driver');
+        $driver = config('plugin.eriodesign.scout.app.driver');
 
         if (! method_exists($engine, 'deleteAllIndexes')) {
             return $this->error('The ['.$driver.'] engine does not support deleting all indexes.');

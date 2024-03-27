@@ -42,8 +42,7 @@ class IndexCommand extends Command
                 $options = ['primaryKey' => $input->getOption('key')];
             }
             $engine->createIndex($name, $options);
-
-            $output->writeln('Index ["'.$name.'"] created successfully.');
+            $output->writeln('索引 ["'.$name.'"] 创建成功');
         } catch (\Exception $exception) {
             $output->writeln($exception->getMessage());
         }

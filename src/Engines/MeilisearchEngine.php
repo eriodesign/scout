@@ -5,6 +5,7 @@ namespace Eriodesign\Scout\Engines;
 use Illuminate\Support\LazyCollection;
 use Eriodesign\Scout\Builder;
 use MeiliSearch\Client as MeiliSearchClient;
+use Meilisearch\Contracts\IndexesQuery;
 use MeiliSearch\MeiliSearch;
 use MeiliSearch\Search\SearchResult;
 
@@ -82,13 +83,17 @@ class MeiliSearchEngine extends Engine
      */
     public function delete($models)
     {
+        if ($models->isEmpty()) {
+            return;
+        }
+
         $index = $this->meilisearch->index($models->first()->searchableAs());
 
-        $index->deleteDocuments(
-            $models->map->getScoutKey()
-                ->values()
-                ->all()
-        );
+        $keys = $models instanceof RemoveableScoutCollection
+            ? $models->pluck($models->first()->getScoutKeyName())
+            : $models->map->getScoutKey();
+
+        $index->deleteDocuments($keys->values()->all());
     }
 
     /**
@@ -133,11 +138,13 @@ class MeiliSearchEngine extends Engine
     {
         $meilisearch = $this->meilisearch->index($builder->index ?: $builder->model->searchableAs());
 
-        // meilisearch-php 0.19.0 is compatible with meilisearch server 0.21.0...
-        if (version_compare(MeiliSearch::VERSION, '0.19.0') >= 0 && isset($searchParams['filters'])) {
-            $searchParams['filter'] = $searchParams['filters'];
+        $searchParams = array_merge($builder->options, $searchParams);
 
-            unset($searchParams['filters']);
+        if (array_key_exists('attributesToRetrieve', $searchParams)) {
+            $searchParams['attributesToRetrieve'] = array_merge(
+                [$builder->model->getScoutKeyName()],
+                $searchParams['attributesToRetrieve'],
+            );
         }
 
         if ($builder->callback) {
@@ -148,7 +155,11 @@ class MeiliSearchEngine extends Engine
                 $searchParams
             );
 
-            return $result instanceof SearchResult ? $result->getRaw() : $result;
+            $searchResultClass = class_exists(SearchResult::class)
+                ? SearchResult::class
+                : \Meilisearch\Search\SearchResult;
+
+            return $result instanceof $searchResultClass ? $result->getRaw() : $result;
         }
 
         return $meilisearch->rawSearch($builder->query, $searchParams);
@@ -168,20 +179,29 @@ class MeiliSearchEngine extends Engine
             }
 
             return is_numeric($value)
-                            ? sprintf('%s=%s', $key, $value)
-                            : sprintf('%s="%s"', $key, $value);
+                ? sprintf('%s=%s', $key, $value)
+                : sprintf('%s="%s"', $key, $value);
         });
 
-        foreach ($builder->whereIns as $key => $values) {
-            $filters->push(sprintf('(%s)', collect($values)->map(function ($value) use ($key) {
-                if (is_bool($value)) {
-                    return sprintf('%s=%s', $key, $value ? 'true' : 'false');
-                }
+        $whereInOperators = [
+            'whereIns' => 'IN',
+            'whereNotIns' => 'NOT IN',
+        ];
 
-                return filter_var($value, FILTER_VALIDATE_INT) !== false
-                                ? sprintf('%s=%s', $key, $value)
-                                : sprintf('%s="%s"', $key, $value);
-            })->values()->implode(' OR ')));
+        foreach ($whereInOperators as $property => $operator) {
+            if (property_exists($builder, $property)) {
+                foreach ($builder->{$property} as $key => $values) {
+                    $filters->push(sprintf('%s %s [%s]', $key, $operator, collect($values)->map(function ($value) {
+                        if (is_bool($value)) {
+                            return sprintf('%s', $value ? 'true' : 'false');
+                        }
+
+                        return filter_var($value, FILTER_VALIDATE_INT) !== false
+                            ? sprintf('%s', $value)
+                            : sprintf('"%s"', $value);
+                    })->values()->implode(', ')));
+                }
+            }
         }
 
         return $filters->values()->implode(' AND ');
@@ -238,7 +258,7 @@ class MeiliSearchEngine extends Engine
     /**
      * Map the given results to instances of the given model.
      *
-     * @param  \Eriodesign\Scout\Builder  $builder
+     * @param  \Laravel\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Database\Eloquent\Collection
@@ -249,7 +269,7 @@ class MeiliSearchEngine extends Engine
             return $model->newCollection();
         }
 
-        $objectIds = collect($results['hits'])->pluck($model->getKeyName())->values()->all();
+        $objectIds = collect($results['hits'])->pluck($model->getScoutKeyName())->values()->all();
 
         $objectIdPositions = array_flip($objectIds);
 
@@ -257,15 +277,25 @@ class MeiliSearchEngine extends Engine
             $builder, $objectIds
         )->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
+        })->map(function ($model) use ($results, $objectIdPositions) {
+            $result = $results['hits'][$objectIdPositions[$model->getScoutKey()]] ?? [];
+
+            foreach ($result as $key => $value) {
+                if (substr($key, 0, 1) === '_') {
+                    $model->withScoutMetadata($key, $value);
+                }
+            }
+
+            return $model;
         })->sortBy(function ($model) use ($objectIdPositions) {
             return $objectIdPositions[$model->getScoutKey()];
         })->values();
     }
 
     /**
-     * Map the given results to instances of the given modell via a lazy collection.
+     * Map the given results to instances of the given model via a lazy collection.
      *
-     * @param  \Eriodesign\Scout\Builder  $builder
+     * @param  \Laravel\Scout\Builder  $builder
      * @param  mixed  $results
      * @param  \Illuminate\Database\Eloquent\Model  $model
      * @return \Illuminate\Support\LazyCollection
@@ -276,13 +306,23 @@ class MeiliSearchEngine extends Engine
             return LazyCollection::make($model->newCollection());
         }
 
-        $objectIds = collect($results['hits'])->pluck($model->getKeyName())->values()->all();
+        $objectIds = collect($results['hits'])->pluck($model->getScoutKeyName())->values()->all();
         $objectIdPositions = array_flip($objectIds);
 
         return $model->queryScoutModelsByIds(
             $builder, $objectIds
         )->cursor()->filter(function ($model) use ($objectIds) {
             return in_array($model->getScoutKey(), $objectIds);
+        })->map(function ($model) use ($results, $objectIdPositions) {
+            $result = $results['hits'][$objectIdPositions[$model->getScoutKey()]] ?? [];
+
+            foreach ($result as $key => $value) {
+                if (substr($key, 0, 1) === '_') {
+                    $model->withScoutMetadata($key, $value);
+                }
+            }
+
+            return $model;
         })->sortBy(function ($model) use ($objectIdPositions) {
             return $objectIdPositions[$model->getScoutKey()];
         })->values();
@@ -296,7 +336,7 @@ class MeiliSearchEngine extends Engine
      */
     public function getTotalCount($results)
     {
-        return $results['nbHits'];
+        return $results['totalHits'];
     }
 
     /**
@@ -337,6 +377,42 @@ class MeiliSearchEngine extends Engine
     public function deleteIndex($name)
     {
         return $this->meilisearch->deleteIndex($name);
+    }
+
+    /**
+     * Update an index's settings.
+     *
+     * @param  string  $name
+     * @param  array  $options
+     * @return array
+     *
+     * @throws \Meilisearch\Exceptions\ApiException
+     */
+    public function updateIndexSettings($name, array $options = [])
+    {
+        return $this->meilisearch->index($name)->updateSettings($options);
+    }
+
+    /**
+     * Delete all search indexes.
+     *
+     * @return mixed
+     */
+    public function deleteAllIndexes()
+    {
+        $tasks = [];
+        $limit = 1000000;
+
+        $query = new IndexesQuery();
+        $query->setLimit($limit);
+
+        $indexes = $this->meilisearch->getIndexes($query);
+
+        foreach ($indexes->getResults() as $index) {
+            $tasks[] = $index->delete();
+        }
+
+        return $tasks;
     }
 
     /**

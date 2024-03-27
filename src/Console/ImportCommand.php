@@ -16,15 +16,15 @@ class ImportCommand extends Command
      * @var string
      */
     protected $signature = 'scout:import
-            {model : Class name of model to bulk import}
-            {--c|chunk= : The number of records to import at a time (Defaults to configuration value: `scout.chunk.searchable`)}';
+            {model : 要批量导入的模型的类名}
+            {--c|chunk= : 一次导入的记录数(默认为配置值： `scout.chunk.searchable`)}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Import the given model into the search index';
+    protected $description = '将指定模型源数据导入搜索索引';
 
     /**
      * Execute the console command.
@@ -41,13 +41,13 @@ class ImportCommand extends Command
         $events->listen(ModelsImported::class, function ($event) use ($class) {
             $key = $event->models->last()->getScoutKey();
 
-            $this->line('<comment>Imported ['.$class.'] models up to ID:</comment> '.$key);
+            $this->line('<comment>已导入 ['.$class.'] 模型到ID:</comment> '.$key);
         });
 
         $model::makeAllSearchable($this->option('chunk'));
 
         $events->forget(ModelsImported::class);
 
-        $this->info('All ['.$class.'] records have been imported.');
+        $this->info('所有 ['.$class.'] 记录都已被导入');
     }
 }

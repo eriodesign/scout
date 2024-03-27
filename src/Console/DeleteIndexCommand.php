@@ -16,14 +16,14 @@ class DeleteIndexCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'scout:delete-index {name : The name of the index}';
+    protected $signature = 'scout:delete-index {name : 索引名称}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Delete an index';
+    protected $description = '删除指定索引';
 
     /**
      * Execute the console command.
@@ -54,7 +54,7 @@ class DeleteIndexCommand extends Command
             return (new $name)->searchableAs();
         }
 
-        $prefix = config('scout.prefix');
+        $prefix = config('plugin.eriodesign.scout.app.prefix');
 
         return ! Str::startsWith($name, $prefix) ? $prefix.$name : $name;
     }
