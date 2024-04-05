@@ -104,14 +104,16 @@ class MeiliSearchEngine extends Engine
     public function search(Builder $builder)
     {
         return $this->performSearch($builder, array_filter([
-            'filters' => $this->filters($builder),
-            'limit' => $builder->limit,
+            'filter' => $this->filters($builder),
+            'hitsPerPage' => $builder->limit,
             'sort' => $this->buildSortFromOrderByClauses($builder),
         ]));
     }
 
     /**
      * Perform the given search on the engine.
+     *
+     * page/hitsPerPage ensures that the search is exhaustive.
      *
      * @param  int  $perPage
      * @param  int  $page
@@ -120,13 +122,13 @@ class MeiliSearchEngine extends Engine
     public function paginate(Builder $builder, $perPage, $page)
     {
         return $this->performSearch($builder, array_filter([
-            'filters' => $this->filters($builder),
-            'limit' => (int) $perPage,
-            'offset' => ($page - 1) * $perPage,
+            'filter' => $this->filters($builder),
+            'hitsPerPage' => (int) $perPage,
+            'page' => $page,
             'sort' => $this->buildSortFromOrderByClauses($builder),
         ]));
     }
-
+    
     /**
      * Perform the given search on the engine.
      *

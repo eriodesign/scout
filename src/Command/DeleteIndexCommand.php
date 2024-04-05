@@ -18,20 +18,20 @@ class DeleteIndexCommand extends Command
      * @var string
      */
     protected static $defaultName = 'scout:delete-index';
-    protected static $defaultDescription = 'Delete an index';
+    protected static $defaultDescription = '删除索引';
 
     protected function configure()
     {
-        $this->addArgument('name', InputArgument::OPTIONAL, 'The name of the index');
+        $this->addArgument('name', InputArgument::OPTIONAL, '索引名称');
     }
 
     /**
      * Execute the console command.
      *
      * @param  \Eriodesign\Scout\EngineManager  $manager
-     * @return void
+     * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $name = $input->getArgument('name');

@@ -18,18 +18,18 @@ class ImportCommand extends Command
      * @var string
      */
     protected static $defaultName = 'scout:import';
-    protected static $defaultDescription = 'Import the given model into the search index';
+    protected static $defaultDescription = '将指定模型数据导入搜索索引';
 
     protected function configure()
     {
-        $this->addArgument('model', InputArgument::OPTIONAL, 'Class name of model to bulk import');
-        $this->addOption('chunk', '--c', InputOption::VALUE_REQUIRED, 'The number of records to import at a time (Defaults to configuration value: `scout.chunk.searchable`');
+        $this->addArgument('model', InputArgument::OPTIONAL, '要批量导入的模型的类名');
+        $this->addOption('chunk', '--c', InputOption::VALUE_REQUIRED, '一次导入的记录数（默认为配置值：`scout.chunk.searchable`）。');
     }
     /**
      * Execute the console command.
      * @return void
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         $class = $input->getArgument('model');
         $model = new $class;

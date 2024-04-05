@@ -16,7 +16,7 @@ class FlushCommand extends Command
      * @var string
      */
     protected static $defaultName = 'scout:flush';
-    protected static $defaultDescription = "Flush all of the model's records from the index";
+    protected static $defaultDescription = "从索引中清除模型的所有记录";
     /**
      * @return void
      */
@@ -26,9 +26,9 @@ class FlushCommand extends Command
     }
     /**
      * Execute the console command.
-     *
+     * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         $class = $input->getArgument('model');
 

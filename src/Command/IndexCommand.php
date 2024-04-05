@@ -18,21 +18,21 @@ class IndexCommand extends Command
      * @var string
      */
     protected static $defaultName = 'scout:index';
-    protected static $defaultDescription = 'Create an index';
+    protected static $defaultDescription = '创建索引';
     /**
      * @return void
      */
     protected function configure()
     {
-        $this->addArgument('name', InputArgument::OPTIONAL, 'The name of the index');
-        $this->addOption('key', '-k', InputOption::VALUE_REQUIRED, 'The name of the primary key');
+        $this->addArgument('name', InputArgument::OPTIONAL, '索引名称');
+        $this->addOption('key', '-k', InputOption::VALUE_REQUIRED, '主键的名称');
     }
 
     /**
      * Execute the console command.
-     * @return void
+     * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         $engine = app(EngineManager::class)->engine();
         $name = $input->getArgument('name');

@@ -41,16 +41,17 @@ class SyncIndexSettingsCommand extends Command
 
     /**
      * Execute the console command.
-     * @return void
+     * @return int
      */
-    public function execute(InputInterface $input, OutputInterface $output)
+    public function execute(InputInterface $input, OutputInterface $output): int
     {
         $engine = app(EngineManager::class)->engine();
 
         $driver = config('plugin.eriodesign.scout.app.driver');
 
         if (!method_exists($engine, 'updateIndexSettings')) {
-            return $output->writeln('"' . $driver . '" 引擎不支持更新索引设置');
+            $output->writeln('"' . $driver . '" 引擎不支持更新索引设置');
+            return 0;
         }
 
         try {
@@ -60,7 +61,6 @@ class SyncIndexSettingsCommand extends Command
                 foreach ($indexes as $name => $settings) {
                     if (!is_array($settings)) {
                         $name = $settings;
-
                         $settings = [];
                     }
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 全局配置文件
  */
@@ -9,7 +10,7 @@ use MeiliSearch\Client as MeiliSearch;
 use Elastic\Elasticsearch\Client as ElasticSearch;
 use Eriodesign\Scout\EngineManager;
 
-if (! function_exists('app')) {
+if (!function_exists('app')) {
     /**
      * Get the available container instance.
      *
@@ -25,7 +26,7 @@ if (! function_exists('app')) {
         return Container::getInstance()->make($abstract, $parameters);
     }
 }
-if (! function_exists('event')) {
+if (!function_exists('event')) {
     /**
      * Dispatch an event and call the listeners.
      *
@@ -45,12 +46,6 @@ if (class_exists(MeiliSearch::class)) {
     app()->singleton(MeiliSearch::class, function ($app) {
         $config = config('plugin.eriodesign.scout.app.meilisearch');
         return new MeiliSearch($config['host'], $config['key']);
-    });
-}
-if (class_exists(ElasticSearch::class)) {
-    app()->singleton(ElasticSearch::class, function ($app) {
-        $config = config('plugin.eriodesign.scout.app.elasticsearch');
-        return new ElasticSearch($config['host'], $config['key']);
     });
 }
 app()->singleton(Dispatcher::class, function ($app) {
